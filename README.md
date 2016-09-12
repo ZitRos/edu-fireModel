@@ -1,2 +1,4 @@
 # edu-fireModel
-Simple JavaScript application to simulate fire spread
+Simple JavaScript application to simulate fire spread.
+
+
