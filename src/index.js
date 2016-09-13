@@ -8,7 +8,7 @@ const VARIANT = 7, // Nikita Savchenko
 const TREES = { type: 0, price: 500, class: "forest" },
       FIRE = { type: 1, class: "fire" },
       HOUSES = { type: 0, price: 500, class: "houses" },
-      EXPLOSION = { type: 2, price: 100000, class: "explosive" };
+      EXPLOSION = { type: 2, price: 0.4, class: "explosive" }; // $100000 / 500 / 500
 
 const variants = [
     [[-1, 1], 0.5, 0.5], // [direction [x, y], speed (m/s), duration (h)]
@@ -86,7 +86,8 @@ function mergeArrays (arr) {
     for (let i = 0; i < maxLen; i++) {
         let sa = [];
         for (let j = 0; j < arr.length; j++) {
-            if (arr[j][i]) sa.push(arr[j][i]);
+            if (arr[j][i] instanceof Array) sa = sa.concat(arr[j][i]);
+            else if (typeof arr[j][i] === "object") sa.push(arr[j][i]);
         }
         a.push(sa);
     }
@@ -116,7 +117,7 @@ function changeVisualDir () {
 function expandFire (HOURS = 0.5, SPEED = 0.5, x, y, [dx, dy]) {
     let toExpand =
             (SPEED*HOURS*60*60
-                + (Math.abs(dx) === 1 && Math.abs(dy) === 1 ? 1/Math.sqrt(2) : 1)) / STEP,
+                * (Math.abs(dx) === 1 && Math.abs(dy) === 1 ? 1/Math.sqrt(2) : 1)) / STEP,
         wavesOfChanges = [];
     for (let i = 1; i < toExpand; i++) {
         let cx = x + dx*i, cy = y + dy*i;
@@ -125,51 +126,115 @@ function expandFire (HOURS = 0.5, SPEED = 0.5, x, y, [dx, dy]) {
         if (obj.type === TREES.type) {
             // damage += (obj.price || 0) * STEP * STEP;
             // field[cy][cx] = FIRE;
-            wavesOfChanges[i - 1] = [cx, cy, (obj.price || 0) * STEP * STEP, FIRE];
+            wavesOfChanges[i - 1] = {
+                x: cx,
+                y: cy,
+                damage: (obj.price || 0) * STEP * STEP,
+                obj: FIRE
+            };
         } else if (obj.type === EXPLOSION.type) {
             // allow multiple ways to be in the same place
-            break;
+
+            let keys = new Set(),
+                arr = wavesOfChanges[i - 1] = [];
+            function closure (x, y) {
+                if (keys.has(x + "" + y)) return;
+                if (!field[y] || !field[y][x] || field[y][x].type !== EXPLOSION.type) return;
+                keys.add(x + "" + y);
+                arr.push({ x: x, y: y, damage: (obj.price || 0) * STEP * STEP, obj: FIRE });
+                for (let i = -1; i < 2; i++) {
+                    for (let j = -1; j < 2; j++) {
+                        closure(x + i, y + j);
+                    }
+                }
+            }
+            closure(cx, cy);
+            return {
+                changes: wavesOfChanges,
+                abort: 1,
+                on: i/toExpand
+            };
+
         } else {
             break;
         }
     }
-    return wavesOfChanges;
+    return {
+        changes: wavesOfChanges
+    };
 }
 
-function step () {
-    drawField();
-    let fireAt = [],
-        speed = variants[currentVariant][1],
-        duration = variants[currentVariant][2];
+function getFireAt (field) {
+    let fireAt = [];
     for (let i = 0; i < HEIGHT/STEP; i++) {
         for (let j = 0; j < WIDTH/STEP; j++) {
             if (field[i][j].type !== FIRE.type) continue;
             fireAt.push([j, i]); // j then i!
         }
     }
+    return fireAt;
+}
+
+function applyChangesToField (field, changes) {
+    let f = field.slice();
+    for (let i = 0; i < f.length; i++) {
+        f[i] = field[i].slice();
+    }
+    changes.forEach((c) => { field[c.y][c.x] = c.obj; });
+    return f;
+}
+
+function step (durationK = 1) {
+    drawField();
+    let fireAt = getFireAt(field),
+        speed = variants[currentVariant][1],
+        duration = variants[currentVariant][2];
     // now we have fire places in [ [x, y], [x, y] ]
-    let changes = mergeArrays(fireAt.map(
-        f => expandFire(duration, speed, f[0], f[1], variants[currentVariant][0])
-    ).filter(a => a.length));
+    let cng = [],
+        maxChangesLen = Infinity,
+        on = 0; // (0..1]
+    for (let i = 0; i < fireAt.length; i++) {
+        let o = expandFire(duration*durationK, speed, fireAt[i][0], fireAt[i][1], variants[currentVariant][0]);
+        cng.push(o.changes.slice(0, maxChangesLen));
+        if (o.abort) {
+            if (o.changes.length < maxChangesLen) {
+                maxChangesLen = o.changes.length;
+                on = o.on;
+                cng = cng.map(c => c.slice(0, maxChangesLen));
+            }
+        }
+    }
+    let switchVariant = maxChangesLen === Infinity;
+    if (!switchVariant) {
+        duration *= on;
+    }
+    let changes = mergeArrays(cng);
     let stepTime = SIMULATION_SPEED * duration,
-        changeTime = stepTime / changes.length,
-        times = changes.length,
+        chl = Math.max(changes.length, SIMULATION_SPEED*duration*speed/2000), // koef?
+        changeTime = stepTime / chl,
+        times = chl,
+        ii = 0,
         closureInterval = setInterval(closure, times > 0 ? changeTime : stepTime);
     console.log("st", stepTime);
     function closure () {
         if (--times < 0) {
             addPlotPoint();
             clearInterval(closureInterval);
-            nextVariant();
-            step();
+            if (switchVariant)
+                nextVariant();
+            step(1 - on);
             return;
         }
 
-        let change = changes[changes.length - times - 1];
+        let change = changes[ii++];
+        if (!change) {
+            addPlotPoint();
+            return;
+        }
         try {
             change.forEach((c) => {
-                field[c[1]][c[0]] = c[3];
-                damage += c[2];
+                field[c.x][c.y] = c.obj;
+                damage += c.damage;
             });
             drawField();
         } catch (e) {
@@ -229,7 +294,7 @@ $(function () {
                 text: 'Damage, $'
             },
             xAxis: {
-                type: 'datetime',
+                type: 'time',
                 tickPixelInterval: 150
             },
             yAxis: {
