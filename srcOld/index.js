@@ -32,8 +32,7 @@ let graph = null,
 let currentVariant = VARIANT - 1;
 
 let field = [],
-    damage,
-    vis;
+    damage;
 
 for (let i = 0; i < HEIGHT/STEP; i++) {
     field[i] = [];
@@ -258,7 +257,7 @@ window.addEventListener("load", () => {
 } ,false);
 
 function addPlotPoint () {
-    if (vis) vis.addPoint([new Date(), damage], true);
+    if (chart) chart.addPoint([new Date(), damage], true);
 }
 
 let _ll = 0;
@@ -285,7 +284,7 @@ $(function () {
                 marginRight: 10,
                 events: {
                     load: function () {
-                        vis = this.series[0];
+                        chart = this.series[0];
                         loader();
                     }
                 }

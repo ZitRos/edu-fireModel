@@ -1,0 +1,76 @@
+html, body {
+    background: #eee;
+    color: #222;
+    font-family: fantasy;
+}
+
+.app {
+    position: relative;
+    overflow: visible;
+}
+
+#arrow {
+    width: 48px;
+    height: 48px;
+    background-size: 100%;
+    background-image: url(data:image/svg+xml;utf8;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iaXNvLTg4NTktMSI/Pgo8c3ZnIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHZlcnNpb249IjEuMSIgdmlld0JveD0iMCAwIDMxLjkgMzEuOSIgZW5hYmxlLWJhY2tncm91bmQ9Im5ldyAwIDAgMzEuOSAzMS45IiB3aWR0aD0iNTEycHgiIGhlaWdodD0iNTEycHgiPgogIDxwYXRoIGQ9Im0yMC44LDYuNTVsNS43LDUuN2MyLDIuMSAyLDUuNCAwLDcuNWwtMS4zLDEuM2MtMS41LDEuNS02LDQuNy02LjEsMiAwLTEuNy0xLjMtMy4xLTMtMy4xaC05LjZjLTIsMC0zLjYtMS42LTMuNi0zLjZ2LTAuOGMwLTIgMS42LTMuNiAzLjYtMy42aDkuNmMxLjcsMCAzLTEuMyAzLTN2LTEuOGMwLTAuOCAxLjEtMS4yIDEuNy0wLjZ6bS0xLjUtMy41Yy0xLjEsMC0yLjEsMC45LTIuMSwyLjF2MS45YzAsMS42LTEuMywyLjktMi45LDIuOWgtMTFjLTEuOCwwLTMuMywxLjUtMy4zLDMuM3Y1LjRjMCwxLjggMS41LDMuMyAzLjMsMy4zaDExYzEuNiwwIDIuOSwxLjMgMi45LDIuOXYxLjljMCwxLjMgMSwyLjEgMi4xLDIuMSAwLjUsMCAxLjEtMC4yIDEuNS0wLjZsMTAuMi0xMC4yYzAuNi0wLjYgMC45LTEuNCAwLjktMi4xIDAtMC44LTAuMy0xLjUtMC45LTIuMWwtMTAuMi0xMC4yYy0wLjUtMC40LTEtMC42LTEuNS0wLjZ6IiBmaWxsPSIjMDAwMDAwIi8+Cjwvc3ZnPgo=);
+    transition: all 1s ease;
+}
+
+.info1 {
+    position: relative;
+    overflow: hidden;
+}
+
+.info1 > .icon {
+    float: left;
+    margin-left: 10px;
+    width: 48px;
+    height: 48px;
+}
+
+.afterIcon {
+    margin-left: 65px;
+}
+
+h1, h2, h3 {
+    font-weight: normal;
+    margin: .5em 0 .5em 0;
+}
+
+.column:first-child {
+    float: left;
+    width: 500px;
+}
+
+.column:not(:first-child) {
+    margin-left: 510px;
+}
+
+#graphics {
+    position: relative;
+    width: 500px;
+    height: 500px;
+    background: #b5eec2;
+    box-shadow: 1px 1px 6px gray;
+}
+
+#graphics > * {
+    position: absolute;
+}
+
+#graphics .fire {
+    background-color: red;
+}
+
+#graphics .forest {
+    background-color: forestgreen;
+}
+
+#graphics .houses {
+    background-color: saddlebrown;
+}
+
+#graphics .explosive {
+    background-color: firebrick;
+}
