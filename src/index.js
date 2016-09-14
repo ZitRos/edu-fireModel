@@ -8,7 +8,8 @@ const
     FIRE_FRONT_SPEED = 0.1, // koef
     INITIAL_FIREPLACE = [1900, 1900, 2100, 2100], // (x;y) from -> (x;y) to
     FPS = 30,
-    SIMULATION_SPEED = 800, // how much times faster to simulate
+    SANATORIUM_IDLING_PRICE = 100/60, // in 1 sec
+    SIMULATION_SPEED = 1600, // how much times faster to simulate
     PLOTTING_INTERVAL = 500; // number of milliseconds to simulate an hour
 
 const variants = [
@@ -24,8 +25,12 @@ const variants = [
     [[1, 0], 1, 1]
 ];
 
-const TYPE_TREES = { price: 100, destructible: true, r: 67, g: 172, b: 67 },
-      TYPE_EXPLOSIVE = { price: 0.4, destructible: true, explodes: true, r: 255, g: 172, b: 0 };
+const TYPE_TREES = { price: 500, destructible: true, r: 67, g: 172, b: 67 },
+      TYPE_EXPLOSIVE = { price: 0.4, destructible: true, explodes: true, r: 255, g: 172, b: 0 },
+      TYPE_HOUSES = { price: 500, destructible: true, r: 170, g: 130, b: 12 },
+      TYPE_AIRPORT = { price: 1000000, destructible: true, disables: true, r: 70, g: 30, b: 250 },
+      TYPE_SANATORIUM = { price: 0, destructible: true, disables: true, r: 190, g: 20, b: 250 },
+      TYPE_WATER = { price: 0, destructible: false, r: 20, g: 190, b: 250 };
 
 let damage = 0,
     canvas = null,
@@ -33,14 +38,16 @@ let damage = 0,
     chart = null,
     field = [],
     currentVariant = VARIANT - 1,
-    time = 0;
+    time = 0,
+    sanatoriumIdling = false;
 
 function getFront (dx = 1, dy = 0) {
     let f = [];
     for (let i = 0; i < HEIGHT/STEP; i++) {
         for (let j = 0; j < WIDTH/STEP; j++) {
             if (field[i][j].health === 0 && field[i + dy] && field[i + dy][j + dx]
-                && field[i + dy][j + dx].type.destructible && field[i + dy][j + dx].health > 0) {
+                && field[i + dy][j + dx].type.destructible && field[i + dy][j + dx].health > 0
+                && field[i + dy][j + dx].enabled) {
                 f.push({ x: j + dx, y: i + dy });
             }
         }
@@ -49,15 +56,36 @@ function getFront (dx = 1, dy = 0) {
 }
 
 function explode (x, y) {
-    if (!field[y] || !field[y][x] || !field[y][x].type.explodes || !field[y][x].health)
-        return;
-    field[y][x].health = 0;
+    let a = [];
     for (let i = -1; i < 2; i++) {
         for (let j = -1; j < 2; j++) {
-            if (i === j && i === 0) continue;
-            explode(x + i, y + j);
+            let xx = x + i, yy = y + j;
+            if (!field[yy] || !field[yy][xx] || !field[yy][xx].type.explodes || !field[yy][xx].health)
+                continue;
+            field[yy][xx].health = 0;
+            damage += field[yy][xx].type.price || 0;
+            a.push({ x: xx, y: yy });
         }
     }
+    a.forEach(e => explode(e.x, e.y));
+}
+
+function disable (x, y, fix = true) {
+    let a = [];
+    if (fix && field[y][x].type === TYPE_SANATORIUM) {
+        sanatoriumIdling = true;
+    }
+    for (let i = -1; i < 2; i++) {
+        for (let j = -1; j < 2; j++) {
+            let xx = x + i, yy = y + j;
+            if (!field[yy] || !field[yy][xx] || !field[yy][xx].type.disables || !field[yy][xx].enabled)
+                continue;
+            field[yy][xx].enabled = false;
+            if (fix) damage += field[yy][xx].type.price;
+            a.push({ x: xx, y: yy });
+        }
+    }
+    a.forEach(e => disable(e.x, e.y, false));
 }
 
 function step (front, k, t = 0) {
@@ -66,24 +94,30 @@ function step (front, k, t = 0) {
         t1 = k * min;
     for (let i = 0; i < front.length; i++) {
         let e = front[i],
-            dmg = min * Math.min(1, t / t1);
+            dt = Math.min(1, t / t1),
+            dmg = min * dt;
         if (field[e.y][e.x].type.explodes) {
             explode(e.x, e.y);
+            return step(getFront(variants[currentVariant][0][0], variants[currentVariant][1]), k, t);
+        } else if (field[e.y][e.x].type.disables) {
+            disable(e.x, e.y);
             return step(getFront(variants[currentVariant][0][0], variants[currentVariant][1]), k, t);
         }
         field[e.y][e.x].health -= dmg;
         damage += dmg * field[e.y][e.x].type.price || 0;
+        if (sanatoriumIdling)
+            damage += SANATORIUM_IDLING_PRICE * dt;
     }
     return t1 > t ? 0 : t - t1;
 }
 
 function loop (t, windSpeed, dir) {
-    let lt = Date.now();
+    let lt = Date.now(), st = 0;
     let vF = windSpeed * FIRE_FRONT_SPEED;
     while ((t = step(getFront(dir[0], dir[1]), STEP / vF, t)) > 0) {
-        //
+        st++;
     }
-    console.log("Step compute time:", Date.now() - lt);
+    console.log("Step compute time:", Date.now() - lt, "Steps:", st);
 }
 
 function variantLoop () {
@@ -129,6 +163,17 @@ function init () {
         health: 1,
         enabled: true
     });
+    fillField(2500, 0, 3000, 1000, {
+        type: TYPE_SANATORIUM,
+        health: 1,
+        enabled: true
+    });
+    createLake();
+    let h = { type: TYPE_HOUSES, health: 1, enabled: true };
+    fillField(0, 0, 1500, 500, h);
+    fillField(0, 500, 1000, 1000, h);
+    fillField(0, 1000, 500, 1500, h);
+    createAirport();
     render();
     variantLoop();
     setInterval(addPlotPoint, PLOTTING_INTERVAL);
@@ -195,6 +240,25 @@ function fillField (xf, yf, xt, yt, obj) {
         for (let i = Math.floor(xf / STEP); i < xt / STEP; i++) {
             field[j][i] = Object.assign({}, obj);
         }
+    }
+}
+
+function createAirport () {
+    let o = { type: TYPE_AIRPORT, health: 1, enabled: true };
+    fillField(0, 2500, 500, 4000, o);
+    fillField(500, 3500, 1000, 4000, o);
+    for (let y = Math.floor(2500/STEP); y < 3500/STEP; y++) {
+        let x = Math.floor(500 * (y - Math.floor(2500/STEP)) / Math.floor(1000/STEP));
+        fillField(500, y * STEP, 500 + x, y * STEP + 1, o);
+    }
+}
+
+function createLake () {
+    let o = { type: TYPE_WATER, health: 1, enabled: true };
+    for (let y = 0; y < 1000/STEP; y++) {
+        let x = Math.floor(1500 * Math.pow(y / Math.floor(1000/STEP), 5));
+        console.log(">>",x);
+        fillField(2500 + x, y * STEP, 4000, y * STEP + 1, o);
     }
 }
 
