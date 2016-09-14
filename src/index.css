@@ -29,8 +29,18 @@ html, body {
     height: 48px;
 }
 
-.afterIcon {
-    margin-left: 65px;
+.info1 > div {
+    display: inline-block;
+    vertical-align: top;
+}
+
+.info1 > .lev1 {
+    width: 140px;
+    margin-left: 10px;
+}
+
+.info1 > .lev2 {
+    width: 220px;
 }
 
 h1, h2, h3 {
