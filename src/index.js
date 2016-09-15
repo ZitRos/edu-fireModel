@@ -9,8 +9,8 @@ const
     INITIAL_FIREPLACE = [1900, 1900, 2100, 2100], // (x;y) from -> (x;y) to
     FPS = 30,
     SANATORIUM_IDLING_PRICE = 100/60, // in 1 sec
-    SIMULATION_SPEED = 1600, // how much times faster to simulate
-    PLOTTING_INTERVAL = 500; // number of milliseconds to simulate an hour
+    PLOTTING_INTERVAL = 500, // number of milliseconds to simulate an hour
+    EXPLODE_RADIUS = 10;
 
 const variants = [
     [[-1, 1], 0.5, 0.5], // [direction [dx, dy], speed (m/s), duration (h)]
@@ -39,7 +39,8 @@ let damage = 0,
     field = [],
     currentVariant = VARIANT - 1,
     time = 0,
-    sanatoriumIdling = false;
+    sanatoriumIdling = false,
+    SIMULATION_SPEED = 1600; // how much times faster to simulate;
 
 function getFront (dx = 1, dy = 0) {
     let f = [];
@@ -98,7 +99,7 @@ function step (front, k, t = 0) {
             dmg = min * dt;
         if (field[e.y][e.x].type.explodes) {
             explode(e.x, e.y);
-            return step(getFront(variants[currentVariant][0][0], variants[currentVariant][1]), k, t);
+            return step(getFront(variants[currentVariant][0][0], variants[currentVariant][1]), k, t + EXPLODE_RADIUS/STEP);
         } else if (field[e.y][e.x].type.disables) {
             disable(e.x, e.y);
             return step(getFront(variants[currentVariant][0][0], variants[currentVariant][1]), k, t);
@@ -143,6 +144,10 @@ function variantLoop () {
 function init () {
     canvas = document.getElementById(`graphics`).getContext(`2d`);
     image = canvas.getImageData(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    document.getElementById("num").value = SIMULATION_SPEED;
+    document.getElementById("num").addEventListener("change", () => {
+        SIMULATION_SPEED = document.getElementById("num").value;
+    });
     changeVisualDir();
     for (let i = 3; i < image.data.length; i += 4) image.data[i] = 255;
     for (let i = 0; i < HEIGHT/STEP; i++) {

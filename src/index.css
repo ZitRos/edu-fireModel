@@ -40,7 +40,11 @@ html, body {
 }
 
 .info1 > .lev2 {
-    width: 220px;
+    width: 280px;
+}
+
+#num {
+    width: 80px;
 }
 
 h1, h2, h3 {
