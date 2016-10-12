@@ -258,12 +258,29 @@ function createAirport () {
     }
 }
 
+function getBezier () {
+    let a1 = { x: 2500, y: 0 },
+        a25 = { x: 10000, y: 1500 },
+		a2 = { x: 2900, y: 1500 },
+        a3 = { x: 4000, y: 1000 },
+        arr = [];
+    for (let t = 0; t <= 1; t += 0.005) {
+        arr.push({
+            x: Math.pow(1-t, 3)*a1.x + Math.pow(1-t, 2)*t*a25.x + 2*(1-t)*t*t*a2.x + Math.pow(t, 3)*a3.x,
+            y: Math.pow(1-t, 3)*a1.y + Math.pow(1-t, 2)*t*a25.y + 2*(1-t)*t*t*a2.y + Math.pow(t, 3)*a3.y
+        });
+    }
+    return arr;
+}
+
 function createLake () {
-    let o = { type: TYPE_WATER, health: 1, enabled: true };
+    let o = { type: TYPE_WATER, health: 1, enabled: true },
+        arr = getBezier();
     for (let y = 0; y < 1000/STEP; y++) {
-        let x = Math.floor(1500 * Math.pow(y / Math.floor(1000/STEP), 5));
-        console.log(">>",x);
-        fillField(2500 + x, y * STEP, 4000, y * STEP + 1, o);
+        let j = 0;
+        for (; (arr[j] || {}).y < y*STEP; j++) {  }
+        if ((arr[j] || {}).x)
+            fillField(arr[j].x, y * STEP, 4000, y * STEP + 1, o);
     }
 }
 
@@ -288,15 +305,18 @@ $(document).ready(() => {
             }
         },
         title: {
-            text: 'Damage, $'
+            text: 'Damage Plot'
         },
         xAxis: {
             type: 'time',
-            tickPixelInterval: 150
+            tickPixelInterval: 150,
+            title: {
+                text: 'Time, seconds'
+            }
         },
         yAxis: {
             title: {
-                text: 'Value'
+                text: 'Damage value, $'
             },
             plotLines: [{
                 value: 0,
